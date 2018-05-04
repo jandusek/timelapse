@@ -4,7 +4,7 @@ Tool for processing GoPro Timelapses
 This script depends on [VidStab library](https://github.com/georgmartius/vid.stab). To install ffmpeg with it, use the `--with-libvidstab` flag, e.g:
 
 ```
-$ brew reinstall ffmpeg --with-libvidstab --with-x265
+$ brew install ffmpeg --with-libvidstab --with-x265
 ```
 
 The `directory` argument needs to contain GoPro image files with the filenames in format `Gxxxxxxx.JPG`.

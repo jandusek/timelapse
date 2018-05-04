@@ -1,6 +1,6 @@
 #!/bin/bash
 # install ffmpeg with:
-#   brew reinstall ffmpeg --with-libvidstab --with-x265
+#   brew install ffmpeg --with-libvidstab --with-x265
 
 # the GoPro files are assumed to have a format of Gxxxxxxx.JPG
 
