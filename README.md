@@ -1,7 +1,5 @@
 # timelapse
-Tools for processing GoPro Timelapses
-
-## timelapse
+Tool for processing GoPro Timelapses
 
 This script depends on [VidStab library](https://github.com/georgmartius/vid.stab). To install ffmpeg with it, use the `--with-libvidstab` flag, e.g:
 
