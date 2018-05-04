@@ -1,0 +1,78 @@
+#!/bin/bash
+# install ffmpeg with:
+#   brew reinstall ffmpeg --with-libvidstab --with-x265
+
+# the GoPro files are assumed to have a format of Gxxxxxxx.JPG
+
+YL='\033[1;33m'
+NC='\033[0m'
+ARGS="-y -hide_banner -loglevel info"
+
+# Initialize default variables
+res="1920x1080" # resolution of the final video (e.g. 640x360, 1280x720)
+fps=30          # frames per second
+output_file=""
+output_format="-vcodec libx264 -preset slow -tune film -crf 18"
+mask="G%07d.JPG"
+
+display_usage() { 
+    echo -e "\nUsage:\n$0 [-o outfile] [-r resolution] [-f fps] [-5] directory\n"
+    echo "  -o  define output filename"
+    echo "  -r  output file resolution, e.g. 1280x720, default: 1920x1080"
+    echo "  -r  frames per second, default: 30"
+    echo "  -5  encode the output file using x265 (default is x264)"
+    echo
+}
+
+while getopts "h?f:o:r:5" opt; do
+    case "$opt" in
+    h|\?)
+        display_usage
+        exit 0
+        ;;
+    o)  output_file=$OPTARG
+        ;;
+    f)  fps=$OPTARG
+        ;;
+    r)  res=$OPTARG
+        ;;
+    5)  output_format="-vcodec libx265 -preset slow -crf 18"
+        ;;
+    esac
+done
+
+# and shift getopts away
+shift $((OPTIND - 1))
+directory=$1
+
+if [ -z "$directory" ]; then
+    echo "Directory with time-lapse photos needs to be provided."
+    display_usage
+    exit 1
+fi
+
+if [ -z "$output_file" ]; then
+    output_file="$directory/timelapse_${res}_${fps}fps.mp4"
+fi
+
+vectors="$directory/transform_vectors.trf"
+tmp_file="${output_file}.tmp"
+file_no1=`find "$directory" -type f -iregex ".*/G[0-9][0-9][0-9][0-9][0-9][0-9][0-9]\.JPG$" | sort | head -n1`
+
+if [ -z "$file_no1" ]; then
+    echo "The GoPro files are assumed to have a format of Gxxxxxxx.JPG - no such file found in the provided directory."
+    display_usage
+    exit 1
+else
+    file_no1=`echo $file_no1 | sed -e 's/.*\/G\([0-9]*\)\.JPG/\1/'`
+fi
+
+echo -e   "$YL==== Pass 1/3 ====$NC"
+ffmpeg $ARGS -r $fps -start_number $file_no1 -i "$directory"/$mask -vf "crop=h=2250" -vcodec rawvideo -f mp4 -s $res "$tmp_file"
+echo -e "\n$YL==== Pass 2/3 ====$NC"
+ffmpeg $ARGS -i "$tmp_file" -vf vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result="$vectors" -f null -
+echo -e "\n$YL==== Pass 3/3 ====$NC"
+ffmpeg $ARGS -i "$tmp_file" -vf vidstabtransform=input="$vectors":zoom=1:smoothing=30,unsharp=5:5:0.8:3:3:0.4 $output_format -acodec copy "$output_file"
+
+rm -f "$vectors"
+rm -f "$tmp_file"
