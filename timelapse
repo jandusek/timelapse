@@ -19,7 +19,7 @@ display_usage() {
     echo -e "\nUsage:\n$0 [-o outfile] [-r resolution] [-f fps] [-5] directory\n"
     echo "  -o  define output filename"
     echo "  -r  output file resolution, e.g. 1280x720, default: 1920x1080"
-    echo "  -r  frames per second, default: 30"
+    echo "  -f  frames per second, default: 30"
     echo "  -5  encode the output file using x265 (default is x264)"
     echo
 }
