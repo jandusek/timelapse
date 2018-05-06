@@ -2,7 +2,7 @@
 # install ffmpeg with:
 #   brew install ffmpeg --with-libvidstab --with-x265
 
-# the GoPro files are assumed to have a format of Gxxxxxxx.JPG
+# the GoPro files are assumed to have a format of Gxxxxxxx.JPG and resolution of 4000x3000
 
 YL='\033[1;33m'
 NC='\033[0m'
@@ -13,6 +13,7 @@ res="1920x1080" # resolution of the final video (e.g. 640x360, 1280x720)
 fps=30          # frames per second
 output_file=""
 output_format="-vcodec libx264 -preset slow -tune film -crf 18"
+stab=false
 mask="G%07d.JPG"
 
 display_usage() { 
@@ -20,11 +21,12 @@ display_usage() {
     echo "  -o  define output filename"
     echo "  -r  output file resolution, e.g. 1280x720, default: 1920x1080"
     echo "  -f  frames per second, default: 30"
+    echo "  -s  stabilize (default is no stabilization)"
     echo "  -5  encode the output file using x265 (default is x264)"
     echo
 }
 
-while getopts "h?f:o:r:5" opt; do
+while getopts "h?f:o:r:5s" opt; do
     case "$opt" in
     h|\?)
         display_usage
@@ -35,6 +37,8 @@ while getopts "h?f:o:r:5" opt; do
     f)  fps=$OPTARG
         ;;
     r)  res=$OPTARG
+        ;;
+    s)  stab=true
         ;;
     5)  output_format="-vcodec libx265 -preset slow -crf 18"
         ;;
@@ -67,12 +71,17 @@ else
     file_no1=`echo $file_no1 | sed -e 's/.*\/G\([0-9]*\)\.JPG/\1/'`
 fi
 
-echo -e   "$YL==== Pass 1/3 ====$NC"
-ffmpeg $ARGS -r $fps -start_number $file_no1 -i "$directory"/$mask -vf "crop=h=2250" -vcodec rawvideo -f mp4 -s $res "$tmp_file"
-echo -e "\n$YL==== Pass 2/3 ====$NC"
-ffmpeg $ARGS -i "$tmp_file" -vf vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result="$vectors" -f null -
-echo -e "\n$YL==== Pass 3/3 ====$NC"
-ffmpeg $ARGS -i "$tmp_file" -vf vidstabtransform=input="$vectors":zoom=1:smoothing=30,unsharp=5:5:0.8:3:3:0.4 $output_format -acodec copy "$output_file"
+if [ "$stab" = true ]; then
+    echo -e   "$YL==== Pass 1/3 ====$NC"
+    ffmpeg $ARGS -r $fps -start_number $file_no1 -i "$directory"/$mask -vf "crop=h=2250" -vcodec rawvideo -f mp4 -s $res "$tmp_file"
+    echo -e "\n$YL==== Pass 2/3 ====$NC"
+    ffmpeg $ARGS -i "$tmp_file" -vf vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result="$vectors" -f null -
+    echo -e "\n$YL==== Pass 3/3 ====$NC"
+    ffmpeg $ARGS -i "$tmp_file" -vf vidstabtransform=input="$vectors":zoom=1:smoothing=30,unsharp=5:5:0.8:3:3:0.4 $output_format -acodec copy "$output_file"
+else
+    echo -e   "$YL==== Pass 1/1 ====$NC"
+    ffmpeg $ARGS -r $fps -start_number $file_no1 -i "$directory"/$mask -filter:v select="mod(n-1\,2)" -vf "crop=h=2250" $output_format -s $res -acodec copy "$output_file"
+fi
 
 rm -f "$vectors"
 rm -f "$tmp_file"
